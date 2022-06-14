@@ -19,6 +19,7 @@ var selector = process.argv[3];
 // read the staticoso.json file
 var template = JSON.parse(fs.readFileSync(folder + '/staticoso.json', 'utf8'));
 var extensions = template["settings"]["extensions"];
+var templateVariables = template["variables"];
 // fill the variable extensions with the standard if it is undefined
 if (extensions == undefined) {
     extensions = ['htm', 'html'];
@@ -26,31 +27,36 @@ if (extensions == undefined) {
 
 // read all files with the provided extensions
 // if no extensions are provided, it will default to .htm and .html
-var files = fs.readdirSync(folder).filter(function(file) {
+var files = fs.readdirSync(folder).filter(function (file) {
     // return all files that match the extensions
     return extensions.indexOf(file.split('.').pop()) > -1;
 });
 
 // get through all the files
-files.forEach(function(file) {
+files.forEach(function (file) {
+    console.log('Processing file: ' + file);
     // read the file
     var sourceFileContent = fs.readFileSync(folder + '/' + file, 'utf8');
     // get the variables that match {{ variable }} and return the content of the matching variable without the brackets
     var sourceVariables = sourceFileContent.match(/\{\{[^}]+\}\}/g);
     // build an associative array with the variables and their values
     var variables = {};
-    sourceVariables.forEach(sourceVariable =>{
-        variables[sourceVariable] = sourceVariable.replace(/\{\{|\}\}/g, '').trim().toLowerCase();
-    });
+    if (sourceVariables == null) {
+        console.log('No variables found in file: ' + file);
+    }
     // if variables to replace are found, replace them
-    if (sourceVariables.length > 0) {
+    if (sourceVariables != null) {
+        console.log('Found ' + sourceVariables.length + ' variables in file: ' + file);
+        sourceVariables.forEach(sourceVariable => {
+            variables[sourceVariable] = sourceVariable.replace(/\{\{|\}\}/g, '').trim().toLowerCase();
+        });
         // get the values for the variables
-        sourceVariables.forEach(sourceVariable =>{
+        sourceVariables.forEach(sourceVariable => {
             // get the value, either the standard one, or the selected one or the value, if it's not an object
-            var templateValue = template[variables[sourceVariable]];
+            var templateValue = templateVariables[variables[sourceVariable]];
             var actualValue = "";
-            if (typeof(templateValue) === 'object') {
-                if (selector == undefined){
+            if (typeof (templateValue) === 'object') {
+                if (selector == undefined) {
                     actualValue = Object.values(templateValue)[0];
                 } else {
                     actualValue = templateValue[selector];
@@ -58,16 +64,30 @@ files.forEach(function(file) {
             } else {
                 actualValue = templateValue;
             }
-            // replace the variable with the value
-            sourceFileContent = sourceFileContent.replace(sourceVariable, actualValue);
+            if (actualValue == undefined) {
+                // search occurrence in line and get the line number
+                var lineNumber = sourceFileContent.substring(0, sourceFileContent.indexOf(sourceVariable)).split('\n').length;
+                console.error('Variable "', sourceVariable , '" found in file on line', lineNumber ,  'not found in staticoso template file');
+            } else {
+                sourceFileContent = sourceFileContent.replace(sourceVariable, actualValue);
+            }
         });
-    }
+
     //console.log(html);
     // create the folder public if it doesn't exist
-    if (!fs.existsSync(folder + '/public')) {
-        fs.mkdirSync(folder + '/public');
+
+        if (!fs.existsSync(folder + '/public')) {
+            fs.mkdirSync(folder + '/public');
+        }
+        // append the selector to the file name if it is not undefined
+
+        if (selector != undefined) {
+            var extension = file.split('.').pop();
+            file = file.replace('.' + extension,  '_' + selector + '.' + extension);
+        }
+        // write out the html to a new file
+        console.log('Writing file: ' + folder + '/public/' + file);
+        fs.writeFileSync(folder + '/public/' + file, sourceFileContent);
     }
-    // write out the html to a new file
-    fs.writeFileSync(folder + '/public/' + file, sourceFileContent);
-    console.log(variables);
+    console.log('');
 });
