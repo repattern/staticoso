@@ -58,3 +58,4 @@ You call the script like this:
 
 ```
 node staticoso.js /sourceFolder (selector|optional)
+```
