@@ -44,7 +44,7 @@ var files = fs.readdirSync(folder).filter(function (file) {
 });
 
 var selectors = [];
-// if selector is undefined, it will run through all selectors
+// if selector is undefined, it will run through all selectors in the variables and the includes
 if (selector == undefined) {
     // search for the first object in the variables
     for (var key in templateVariables) {
@@ -54,9 +54,18 @@ if (selector == undefined) {
         }
     }
 } else {
-    selectors.push(selector);
+    if (selector == undefined) {
+        // search for the first object in the variables
+        for (var key in templateIncludes) {
+            if (typeof (templateIncludes[key]) === 'object') {
+                selectors = Object.values(templateIncludes[key]);
+                break;
+            }
+        }
+    } else {
+        selectors.push(selector);
+    }
 }
-
 // get through all the files
 files.forEach(function (file) {
     // skip the file if it is in the ignores list
@@ -80,7 +89,7 @@ files.forEach(function (file) {
         sourceVariables.forEach(sourceVariable => {
             variables[sourceVariable] = sourceVariable.replace(/\{\{|\}\}/g, '').trim().toLowerCase();
         });
-        
+
         // iterate over all selectors
         selectors.forEach(actualSelector => {
             var newFileContent = sourceFileContent;
@@ -100,7 +109,6 @@ files.forEach(function (file) {
                 }
                 var actualValue = "";
                 if (typeof (templateValue) === 'object') {
-                    console.log(templateValue, templateValue[actualSelector]);
                     // if the value is an object, we try to get the value for the actualSelector
                     actualValue = templateValue[actualSelector];
                 } else {
