@@ -58,7 +58,10 @@ files.forEach(function (file) {
             // if the value is not defined, we try to get it from the templateIncludes
             if (templateValue == undefined) {
                 // we read the content of the include into the variable templateValue
-                templateValue = fs.readFileSync(folder + '/' + templateIncludes[variables[sourceVariable]], 'utf8');
+                // check if the file exists
+                if (fs.existsSync(folder + '/' + templateIncludes[variables[sourceVariable]])) {
+                    templateValue = fs.readFileSync(folder + '/' + templateIncludes[variables[sourceVariable]], 'utf8');
+                }
             }
             var actualValue = "";
             if (typeof (templateValue) === 'object') {
@@ -79,9 +82,7 @@ files.forEach(function (file) {
             }
         });
 
-    //console.log(html);
-    // create the folder public if it doesn't exist
-
+        // create the folder public if it doesn't exist
         if (!fs.existsSync(folder + '/public')) {
             fs.mkdirSync(folder + '/public');
         }
