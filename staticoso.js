@@ -24,10 +24,10 @@ var templateIncludes = {};
 var extensions = template["extensions"];
 var renames = template["renames"];
 var ignores = template["ignores"];
-Object.keys(template["variables"]).forEach( varKey => { 
+Object.keys(template["variables"]).forEach(varKey => {
     templateVariables[varKey.toLowerCase()] = template["variables"][varKey];
 });
-Object.keys(template["includes"]).forEach( varKey => { 
+Object.keys(template["includes"]).forEach(varKey => {
     templateIncludes[varKey.toLowerCase()] = template["includes"][varKey];
 });
 
@@ -43,6 +43,20 @@ var files = fs.readdirSync(folder).filter(function (file) {
     return extensions.indexOf(file.split('.').pop()) > -1;
 });
 
+var selectors = [];
+// if selector is undefined, it will run through all selectors
+if (selector == undefined) {
+    // search for the first object in the variables
+    for (var key in templateVariables) {
+        if (typeof (templateVariables[key]) === 'object') {
+            selectors = Object.values(templateVariables[key]);
+            break;
+        }
+    }
+} else {
+    selectors.push(selector);
+}
+
 // get through all the files
 files.forEach(function (file) {
     // skip the file if it is in the ignores list
@@ -50,6 +64,7 @@ files.forEach(function (file) {
         return;
     }
     console.log('Processing file: ' + file);
+
     // read the file
     var sourceFileContent = fs.readFileSync(folder + '/' + file, 'utf8');
     // get the variables that match {{ variable }} with and  without spaces and return the content of the matching variable without the brackets
@@ -65,57 +80,62 @@ files.forEach(function (file) {
         sourceVariables.forEach(sourceVariable => {
             variables[sourceVariable] = sourceVariable.replace(/\{\{|\}\}/g, '').trim().toLowerCase();
         });
-        // get the values for the variables
-        sourceVariables.forEach(sourceVariable => {
-            // get the value, either the standard one, or the selected one or the value, if it's not an object
-            var templateValue = templateVariables[variables[sourceVariable]];
-            // if the value is not defined, we try to get it from the templateIncludes
-            if (templateValue == undefined) {
-                // we read the content of the include into the variable templateValue
-                // check if the file exists
-                if (fs.existsSync(folder + '/' + templateIncludes[variables[sourceVariable]])) {
-                    templateValue = fs.readFileSync(folder + '/' + templateIncludes[variables[sourceVariable]], 'utf8');
+        
+        // iterate over all selectors
+        selectors.forEach(actualSelector => {
+            var newFileContent = sourceFileContent;
+            console.log('-------------------------------------------');
+            console.log('Using selector', actualSelector);
+            // get the values for the variables
+            sourceVariables.forEach(sourceVariable => {
+                // get the value, either the standard one, or the selected one or the value, if it's not an object
+                var templateValue = templateVariables[variables[sourceVariable]];
+                // if the value is not defined, we try to get it from the templateIncludes
+                if (templateValue == undefined) {
+                    // we read the content of the include into the variable templateValue
+                    // check if the file exists
+                    if (fs.existsSync(folder + '/' + templateIncludes[variables[sourceVariable]])) {
+                        templateValue = fs.readFileSync(folder + '/' + templateIncludes[variables[sourceVariable]], 'utf8');
+                    }
                 }
-            }
-            var actualValue = "";
-            if (typeof (templateValue) === 'object') {
-                if (selector == undefined) {
-                    actualValue = Object.values(templateValue)[0];
+                var actualValue = "";
+                if (typeof (templateValue) === 'object') {
+                    console.log(templateValue, templateValue[actualSelector]);
+                    // if the value is an object, we try to get the value for the actualSelector
+                    actualValue = templateValue[actualSelector];
                 } else {
-                    actualValue = templateValue[selector];
+                    actualValue = templateValue;
                 }
-            } else {
-                actualValue = templateValue;
+                if (actualValue == undefined) {
+                    // search occurrence in line and get the line number
+                    var lineNumber = newFileContent.substring(0, newFileContent.indexOf(sourceVariable)).split('\n').length;
+                    console.error('Variable "', sourceVariable, '" found in file on line', lineNumber, 'not found in staticoso template file (' + variables[sourceVariable] + ')');
+                } else {
+                    newFileContent = newFileContent.replace(sourceVariable, actualValue);
+                }
+            });
+
+            // create the folder public if it doesn't exist
+            if (!fs.existsSync(folder + '/public')) {
+                fs.mkdirSync(folder + '/public');
             }
-            if (actualValue == undefined) {
-                // search occurrence in line and get the line number
-                var lineNumber = sourceFileContent.substring(0, sourceFileContent.indexOf(sourceVariable)).split('\n').length;
-                console.error('Variable "', sourceVariable , '" found in file on line', lineNumber ,  'not found in staticoso template file ('+variables[sourceVariable]+')');
-            } else {
-                sourceFileContent = sourceFileContent.replace(sourceVariable, actualValue);
+            // append the selector to the file name if it is not undefined
+            var fileToSave = file;
+            if (actualSelector != undefined) {
+                var extension = fileToSave.split('.').pop();
+                fileToSave = fileToSave.replace('.' + extension, '_' + actualSelector + '.' + extension);
             }
+            // write out the html to a new file
+            console.log('Writing file: ' + folder + '/public/' + fileToSave);
+            // check if this file has to be renamed
+            if (renames != undefined) {
+                if (renames[fileToSave] != undefined) {
+                    fileToSave = renames[fileToSave];
+                    console.log('Renaming file to: ' + fileToSave);
+                }
+            }
+            fs.writeFileSync(folder + '/public/' + fileToSave, newFileContent);
         });
-
-        // create the folder public if it doesn't exist
-        if (!fs.existsSync(folder + '/public')) {
-            fs.mkdirSync(folder + '/public');
-        }
-        // append the selector to the file name if it is not undefined
-
-        if (selector != undefined) {
-            var extension = file.split('.').pop();
-            file = file.replace('.' + extension,  '_' + selector + '.' + extension);
-        }
-        // write out the html to a new file
-        console.log('Writing file: ' + folder + '/public/' + file);
-        // check if this file has to be renamed
-        if (renames != undefined) {
-            if (renames[file] != undefined) {
-                file = renames[file];
-                console.log('Renaming file to: ' + file);
-            }
-        }
-        fs.writeFileSync(folder + '/public/' + file, sourceFileContent);
     }
     console.log('');
 });
