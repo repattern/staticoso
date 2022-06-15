@@ -52,6 +52,8 @@ Add the definition to the staticoso.json of your project
 Note how you can add the language selector or simply omit it, if you have a variable content that is always standard.
 Same applies to the includes.
 
+The standard output folder is /public, as a subfolder of the source folder.
+
 You call the script like this:
 
 ```
