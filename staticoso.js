@@ -22,6 +22,8 @@ var template = JSON.parse(fs.readFileSync(folder + '/staticoso.json', 'utf8'));
 var templateVariables = {};
 var templateIncludes = {};
 var extensions = template["settings"]["extensions"];
+var renames = template["settings"]["renames"];
+var ignores = template["settings"]["ignores"];
 Object.keys(template["variables"]).forEach( varKey => { 
     templateVariables[varKey.toLowerCase()] = template["variables"][varKey];
 });
@@ -43,6 +45,10 @@ var files = fs.readdirSync(folder).filter(function (file) {
 
 // get through all the files
 files.forEach(function (file) {
+    // skip the file if it is in the ignores list
+    if (ignores.indexOf(file) > -1) {
+        return;
+    }
     console.log('Processing file: ' + file);
     // read the file
     var sourceFileContent = fs.readFileSync(folder + '/' + file, 'utf8');
@@ -102,6 +108,13 @@ files.forEach(function (file) {
         }
         // write out the html to a new file
         console.log('Writing file: ' + folder + '/public/' + file);
+        // check if this file has to be renamed
+        if (renames != undefined) {
+            if (renames[file] != undefined) {
+                file = renames[file];
+                console.log('Renaming file to: ' + file);
+            }
+        }
         fs.writeFileSync(folder + '/public/' + file, sourceFileContent);
     }
     console.log('');
