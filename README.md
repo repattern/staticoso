@@ -38,14 +38,18 @@ Add the definition to the staticoso.json of your project
             "it": "navigation_it.html"
         }
     },
-    "settings": {
-        "extensions": [
-            "html",
-            "htm",
-            "css",
-            "js"
-        ]
-    }
+    "renames": {
+        "index_de.html": "index.html"
+    },
+    "ignores": [
+        "index_copy.html"
+    ],
+    "extensions": [
+        "html",
+        "htm",
+        "css",
+        "js"
+    ]
 }
 ```
 
