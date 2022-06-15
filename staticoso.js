@@ -20,6 +20,7 @@ var selector = process.argv[3];
 var template = JSON.parse(fs.readFileSync(folder + '/staticoso.json', 'utf8'));
 var extensions = template["settings"]["extensions"];
 var templateVariables = template["variables"];
+var templateIncludes = template["includes"];
 // fill the variable extensions with the standard if it is undefined
 if (extensions == undefined) {
     extensions = ['htm', 'html'];
@@ -54,6 +55,11 @@ files.forEach(function (file) {
         sourceVariables.forEach(sourceVariable => {
             // get the value, either the standard one, or the selected one or the value, if it's not an object
             var templateValue = templateVariables[variables[sourceVariable]];
+            // if the value is not defined, we try to get it from the templateIncludes
+            if (templateValue == undefined) {
+                // we read the content of the include into the variable templateValue
+                templateValue = fs.readFileSync(folder + '/' + templateIncludes[variables[sourceVariable]], 'utf8');
+            }
             var actualValue = "";
             if (typeof (templateValue) === 'object') {
                 if (selector == undefined) {
