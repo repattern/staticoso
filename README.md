@@ -52,7 +52,8 @@ Add the definition to the staticoso.json of your project
 Note how you can add the language selector or simply omit it, if you have a variable content that is always standard.
 Same applies to the includes.
 
-The standard output folder is /public, as a subfolder of the source folder.
+The standard output folder is /public, as a subfolder of the source folder. The created files will automatically have the selector in the filename.
+So, if you choose to create the German version of a site, the result will be: index_de.html
 
 You call the script like this:
 
