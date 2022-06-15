@@ -21,9 +21,9 @@ var selector = process.argv[3];
 var template = JSON.parse(fs.readFileSync(folder + '/staticoso.json', 'utf8'));
 var templateVariables = {};
 var templateIncludes = {};
-var extensions = template["settings"]["extensions"];
-var renames = template["settings"]["renames"];
-var ignores = template["settings"]["ignores"];
+var extensions = template["extensions"];
+var renames = template["renames"];
+var ignores = template["ignores"];
 Object.keys(template["variables"]).forEach( varKey => { 
     templateVariables[varKey.toLowerCase()] = template["variables"][varKey];
 });
