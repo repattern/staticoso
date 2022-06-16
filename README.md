@@ -58,6 +58,8 @@ Same applies to the includes.
 
 The standard output folder is /public, as a subfolder of the source folder. The created files will automatically have the selector in the filename.
 So, if you choose to create the German version of a site, the result will be: index_de.html
+With the "renames" option, you can rename files before they are created in the target folder.
+Providing no selector will have the script go through all selectors (it will fill the selector list, by searching for the first occurrence of selectors in the variables).
 
 You call the script like this:
 
