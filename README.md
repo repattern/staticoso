@@ -64,5 +64,9 @@ Providing no selector will have the script go through all selectors (it will fil
 You call the script like this:
 
 ```
-node staticoso.js /sourceFolder (selector|optional)
+node staticoso.js workingfolder [--selector XX] [--simulate] [--verbose] [--vars "XX"="YY","ZZ"="WW"]
 ```
+
+--simulate  will not create any files, only show you a preview of what will happen
+--verbose   will give you a detailed list of the variables and their values or includes
+--vars      allows you to specify variables over the command line that will be dynamically included

@@ -5,9 +5,9 @@ var fs = require('fs');
 // if the first command line argument is -h or --help, print the help message
 if (process.argv[2] == '-h' || process.argv[2] == '--help' || process.argv.length < 3) {
     console.log('Staticoso takes all files in a folder replaces the variables in the file with the values from the staticoso.json file');
-    console.log('Usage: node staticoso.js <workingfolder> <selector>');
-    console.log('The <selector> is optional, and if not provided, it will default to the first entry in the template file');
-    console.log('Example: node staticoso.js ./src/ en');
+    console.log('Usage: node staticoso.js workingfolder [--selector XX] [--simulate] [--vars "XX"="YY","ZZ"="WW"]');
+    console.log('Staticoso will go through all selectors in the template file, unless one specific selector is specified');
+    console.log('Example: node staticoso.js ./src/ --selector en --simulate --vars "date"="1955-10-25","version"="1.0.0"');
     console.log('The staticoso.json file can describe other extensions that the standard HTML extension');
     process.exit(0);
 }
@@ -15,18 +15,55 @@ if (process.argv[2] == '-h' || process.argv[2] == '--help' || process.argv.lengt
 // get first command line argument
 var folder = process.argv[2];
 // the selector is used to select among different versions of a variable
-var selector = process.argv[3];
+// check if --selector is provided and if yes get the next argument
+var selector = undefined;
+var selectorIndex = process.argv.indexOf('--selector');
+if (selectorIndex != -1) {
+    selector = process.argv[selectorIndex + 1];
+};
+var vars = undefined;
+var argumentString = process.argv.map( function(arg) { return arg.toString(); } ).join(' ');
+// check if --vars is provided and if yes get the next argument
+var varsIndex = argumentString.indexOf('--vars ');
+if (varsIndex != -1) {
+    vars = [];
+    // find the next occurrence of -- or the end of the command line arguments
+    var varsEndIndex = argumentString.indexOf('--', varsIndex+2);
+    if (varsEndIndex == -1) {
+        varsEndIndex = argumentString.length;
+    }
+    
+    var varHelper = argumentString.substring(varsIndex + '--vars'.length, varsEndIndex);
+    varHelper.split(',').forEach( item => {
+        var keyValue = item.split('=');
+        vars[keyValue[0].replace('"', '').trim()] = keyValue[1].replace('"', '');
+    });
+}
+
+var simulate = process.argv.indexOf('--simulate') != -1;
+var verbose = process.argv.indexOf('--verbose') != -1;
 
 // read the staticoso.json file
 var template = JSON.parse(fs.readFileSync(folder + '/staticoso.json', 'utf8'));
-var templateVariables = {};
+var templateVariables = [];
 var templateIncludes = {};
 var extensions = template["extensions"];
 var renames = template["renames"];
 var ignores = template["ignores"];
+var targetFolders = template["targetFolders"];
+
 Object.keys(template["variables"]).forEach(varKey => {
     templateVariables[varKey.toLowerCase()] = template["variables"][varKey];
 });
+
+// if variables were passed and are available in the array vars add them to the templateVariables
+if (vars != undefined) {
+    // add the variables to the templateVariables
+    Object.keys(vars).forEach(varKey => {
+        templateVariables[varKey.toLowerCase()] = vars[varKey];
+    });
+}
+
 Object.keys(template["includes"]).forEach(varKey => {
     templateIncludes[varKey.toLowerCase()] = template["includes"][varKey];
 });
@@ -93,11 +130,11 @@ files.forEach(function (file) {
         // iterate over all selectors
         selectors.forEach(actualSelector => {
             var newFileContent = sourceFileContent;
-            console.log('-------------------------------------------');
             console.log('Using selector', actualSelector);
             // get the values for the variables
             sourceVariables.forEach(sourceVariable => {
                 // get the value, either the standard one, or the selected one or the value, if it's not an object
+                var valueWasIncluded = false;
                 var templateValue = templateVariables[variables[sourceVariable]];
                 // if the value is not defined, we try to get it from the templateIncludes
                 if (templateValue == undefined) {
@@ -105,6 +142,7 @@ files.forEach(function (file) {
                     // check if the file exists
                     if (fs.existsSync(folder + '/' + templateIncludes[variables[sourceVariable]])) {
                         templateValue = fs.readFileSync(folder + '/' + templateIncludes[variables[sourceVariable]], 'utf8');
+                        valueWasIncluded = true;
                     }
                 }
                 var actualValue = "";
@@ -120,6 +158,13 @@ files.forEach(function (file) {
                     console.error('Variable "', sourceVariable, '" found in file on line', lineNumber, 'not found in staticoso template file (' + variables[sourceVariable] + ')');
                 } else {
                     newFileContent = newFileContent.replace(sourceVariable, actualValue);
+                    if (verbose){
+                        if (valueWasIncluded){
+                            console.log('Setting variable ' + sourceVariable + ' with included file: ' + templateIncludes[variables[sourceVariable]]);
+                        } else {
+                            console.log('Setting variable ' + sourceVariable + ' with value: ' + actualValue);
+                        }
+                    }
                 }
             });
 
@@ -142,8 +187,19 @@ files.forEach(function (file) {
                     console.log('Renaming file to: ' + fileToSave);
                 }
             }
-            fs.writeFileSync(folder + '/public/' + fileToSave, newFileContent);
+            if (targetFolders != undefined) {
+                if (targetFolders[fileToSave] != undefined) {
+                    fileToSave = targetFolders[fileToSave] + '/' + fileToSave;
+                    console.log('Specific subfolder included: ' + fileToSave);
+                }
+            }
+            if (!simulate){
+                //fs.writeFileSync(folder + '/public/' + fileToSave, newFileContent);
+            } else {
+                console.log('Simulating writing file: ' + folder + '/public/' + fileToSave);
+            }
         });
     }
+    console.log('-------------------------------------------');
     console.log('');
 });
