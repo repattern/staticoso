@@ -53,8 +53,19 @@ var ignores = template["ignores"];
 var targetFolders = template["targetFolders"];
 
 Object.keys(template["variables"]).forEach(varKey => {
-    templateVariables[varKey.toLowerCase()] = template["variables"][varKey];
+    // if there are vars provided, overwrite the value if it matches
+    var setTheValue = template["variables"][varKey];
+    if (vars != undefined) {
+        // get a lowercase version of the key for all vars
+        if (vars[varKey] != undefined) {
+            setTheValue = vars[varKey];
+            console.log(varKey, setTheValue);
+            delete vars[varKey];
+        }
+    }
+    templateVariables[varKey.toLowerCase()] = setTheValue;
 });
+
 
 // if variables were passed and are available in the array vars add them to the templateVariables
 if (vars != undefined) {
@@ -155,7 +166,7 @@ files.forEach(function (file) {
                 if (actualValue == undefined) {
                     // search occurrence in line and get the line number
                     var lineNumber = newFileContent.substring(0, newFileContent.indexOf(sourceVariable)).split('\n').length;
-                    console.error('Variable "', sourceVariable, '" found in file on line', lineNumber, 'not found in staticoso template file (' + variables[sourceVariable] + ')');
+                    console.error('Variable "', sourceVariable, '" found in file on line', lineNumber, 'not found in staticoso template file (' + variables[sourceVariable] + ') - ', templateVariables[variables[sourceVariable]]);
                 } else {
                     newFileContent = newFileContent.replace(sourceVariable, actualValue);
                     if (verbose){
@@ -194,7 +205,7 @@ files.forEach(function (file) {
                 }
             }
             if (!simulate){
-                //fs.writeFileSync(folder + '/public/' + fileToSave, newFileContent);
+                fs.writeFileSync(folder + '/public/' + fileToSave, newFileContent);
             } else {
                 console.log('Simulating writing file: ' + folder + '/public/' + fileToSave);
             }
