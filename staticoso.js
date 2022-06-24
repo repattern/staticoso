@@ -136,14 +136,22 @@ files.forEach(function (file) {
     // if variables to replace are found, replace them
     if (sourceVariables != null) {
         console.log('Found ' + sourceVariables.length + ' variables in file: ' + file);
+        var gotMultipleSelectors = false;
         sourceVariables.forEach(sourceVariable => {
             variables[sourceVariable] = sourceVariable.replace(/\{\{|\}\}/g, '').trim().toLowerCase();
+            if (typeof (templateVariables[variables[sourceVariable]]) === 'object') {
+                gotMultipleSelectors = true;
+            }
         });
 
-        // iterate over all selectors
-        selectors.forEach(actualSelector => {
-            handleSelectors(actualSelector, file, sourceFileContent, sourceVariables);
-        });
+        if (gotMultipleSelectors) {
+            // iterate over all selectors
+            selectors.forEach(actualSelector => {
+                handleSelectors(actualSelector, file, sourceFileContent, sourceVariables);
+            });
+        } else {
+            handleSelectors(selectors[0], file, sourceFileContent, sourceVariables);
+        }
     }
     console.log('-------------------------------------------');
     console.log('');
@@ -163,9 +171,9 @@ function handleVariables(sourceVariables, sourceFileContent, actualSelector) {
             if (fs.existsSync(fileInclude)) {
                 templateValue = fs.readFileSync(fileInclude, 'utf8');
                 // replace all occurences in the templateValue
-                console.log('Recursion', sourceVariable, templateValue, fileInclude);
                 var includedSourceVariables = sourceFileContent.match(/\{\{[^\}]*\}\}/g);
                 if (includedSourceVariables != null) {
+                    console.log('Scanning through included file: ', fileInclude);
                     templateValue = handleVariables(includedSourceVariables, templateValue, actualSelector);
                 }
                 valueWasIncluded = true;
@@ -213,21 +221,24 @@ function handleSelectors(actualSelector, file, sourceFileContent, sourceVariable
     }
     // write out the html to a new file
     console.log('Writing file: ' + folder + '/public/' + fileToSave);
+    // check if we have a target folder
+    var specificFolder = "";
+    if (targetFolders != undefined) {
+        if (targetFolders[fileToSave] != undefined) {
+            specificFolder = targetFolders[fileToSave];
+            console.log('Specific subfolder included: ' + specificFolder + '/' + fileToSave);
+        }
+    }
     // check if this file has to be renamed
     if (renames != undefined) {
         if (renames[fileToSave] != undefined) {
-            fileToSave = renames[fileToSave];
+            fileToSave = fileToSave.replace(fileToSave, renames[fileToSave]);
             console.log('Renaming file to: ' + fileToSave);
         }
     }
-    if (targetFolders != undefined) {
-        if (targetFolders[fileToSave] != undefined) {
-            fileToSave = targetFolders[fileToSave] + '/' + fileToSave;
-            console.log('Specific subfolder included: ' + fileToSave);
-        }
-    }
+
     if (!simulate) {
-        fs.writeFileSync(folder + '/public/' + fileToSave, newFileContent);
+        fs.writeFileSync(folder + '/public/' + specificFolder + '/' + fileToSave, newFileContent);
     } else {
         console.log('Simulating writing file: ' + folder + '/public/' + fileToSave);
     }
