@@ -247,27 +247,35 @@ function handleSelectors(actualSelector, file, sourceFileContent, sourceVariable
         var extension = fileToSave.split('.').pop();
         fileToSave = fileToSave.replace('.' + extension, '_' + actualSelector + '.' + extension);
     }
-    // write out the html to a new file
-    console.log('Writing file: ' + destination + '/' + fileToSave);
     // check if we have a target folder
     var specificFolder = "";
     if (targetFolders != undefined) {
         if (targetFolders[fileToSave] != undefined) {
             specificFolder = targetFolders[fileToSave];
+            // if the folder starts with / remove it
+            if (specificFolder.startsWith('/')) {
+                specificFolder = specificFolder.substr(1);
+            }
+            // if the folder ends with / remove it
+            if (specificFolder.endsWith('/')) {
+                specificFolder = specificFolder.substring(0, specificFolder.length - 1);
+            }
             console.log('Specific subfolder included: ' + specificFolder + '/' + fileToSave);
         }
     }
+    // write out the html to a new file
+    console.log('Writing file: ' + destination + '/' + specificFolder + '/' + fileToSave);
     // check if this file has to be renamed
     if (renames != undefined) {
         if (renames[fileToSave] != undefined) {
+            console.log('Renaming '+fileToSave+' to ' + renames[fileToSave]);
             fileToSave = fileToSave.replace(fileToSave, renames[fileToSave]);
-            console.log('Renaming file to: ' + fileToSave);
         }
     }
 
     if (!simulate) {
         fs.writeFileSync(destination + '/' + specificFolder + '/' + fileToSave, newFileContent);
     } else {
-        console.log('Simulating writing file: ' + destination + '/' + fileToSave);
+        console.log('Simulating writing file: ' + destination + '/' + specificFolder + '/' + fileToSave);
     }
 }
