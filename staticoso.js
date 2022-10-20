@@ -2,18 +2,6 @@
 
 var fs = require('fs');
 
-// if the first command line argument is -h or --help, print the help message
-if (process.argv[2] == '-h' || process.argv[2] == '--help' || process.argv.length < 3) {
-    console.log('Staticoso takes all files in a folder replaces the variables in the file with the values from the staticoso.json file');
-    console.log('Usage: node staticoso.js workingfolder [--selector XX] [--simulate] [--vars "XX"="YY","ZZ"="WW"]');
-    console.log('Staticoso will go through all selectors in the template file, unless one specific selector is specified');
-    console.log('Example: node staticoso.js ./src/ --selector en --simulate --vars "date"="1955-10-25","version"="1.0.0"');
-    console.log('The staticoso.json file can describe other extensions that the standard HTML extension');
-    process.exit(0);
-}
-
-// get first command line argument
-var folder = process.argv[2];
 // the selector is used to select among different versions of a variable
 // check if --selector is provided and if yes get the next argument
 var selector = undefined;
@@ -21,6 +9,39 @@ var selectorIndex = process.argv.indexOf('--selector');
 if (selectorIndex != -1) {
     selector = process.argv[selectorIndex + 1];
 };
+
+var folderIndex = process.argv.indexOf('--source');
+var folder;
+if (folderIndex != -1) {
+    folder = process.argv[folderIndex + 1];
+};
+
+var destinationIndex = process.argv.indexOf('--destination');
+var destination;
+if (destinationIndex != -1) {
+    destination = process.argv[destinationIndex + 1];
+};
+
+if (destination == undefined || destination?.trim()=="" ) {
+    destination = folder + '/public';
+}
+
+// if destination contains a / at the end, we remove it
+if (destination.endsWith('/')) {
+    destination = destination.substring(0, destination.length - 1);
+}
+
+// if the first command line argument is -h or --help, print the help message
+if (process.argv[2] == '-h' || process.argv[2] == '--help' || process.argv.length < 3 || folder==undefined) {
+    console.log('Staticoso takes all files in a folder replaces the variables in the file with the values from the staticoso.json file');
+    console.log('Usage: node staticoso.js workingfolder [--selector XX] [--simulate] [--vars "XX"="YY","ZZ"="WW"]');
+    console.log('Staticoso will go through all selectors in the template file, unless one specific selector is specified');
+    console.log('Example: node staticoso.js --source ./src/ --destination /public --selector en --simulate --vars "date"="1955-10-25","version"="1.0.0"');
+    console.log('The staticoso.json file can describe other extensions that the standard HTML extension.');
+    console.log('--source is mandatory, the destination defaults to {{source}}/public');
+    process.exit(0);
+}
+
 var vars = undefined;
 var argumentString = process.argv.map(function (arg) { return arg.toString(); }).join(' ');
 // check if --vars is provided and if yes get the next argument
@@ -44,6 +65,13 @@ var simulate = process.argv.indexOf('--simulate') != -1;
 var verbose = process.argv.indexOf('--verbose') != -1;
 
 // read the staticoso.json file
+// if staticoso.js does not exist, give an error
+if (!fs.existsSync(folder + '/staticoso.json')) {
+    // get full path from actual folder
+    var fullPath = fs.realpathSync(folder);
+    console.log('Error: staticoso.json file not found in ' + fullPath);
+    process.exit(1);
+}
 var template = JSON.parse(fs.readFileSync(folder + '/staticoso.json', 'utf8'));
 var templateVariables = [];
 var templateIncludes = {};
@@ -210,8 +238,8 @@ function handleSelectors(actualSelector, file, sourceFileContent, sourceVariable
 
     var newFileContent = handleVariables(sourceVariables, sourceFileContent, actualSelector);
     // create the folder public if it doesn't exist
-    if (!fs.existsSync(folder + '/public')) {
-        fs.mkdirSync(folder + '/public');
+    if (!fs.existsSync(destination)) {
+        fs.mkdirSync(destination);
     }
     // append the selector to the file name if it is not undefined
     var fileToSave = file;
@@ -220,7 +248,7 @@ function handleSelectors(actualSelector, file, sourceFileContent, sourceVariable
         fileToSave = fileToSave.replace('.' + extension, '_' + actualSelector + '.' + extension);
     }
     // write out the html to a new file
-    console.log('Writing file: ' + folder + '/public/' + fileToSave);
+    console.log('Writing file: ' + destination + '/' + fileToSave);
     // check if we have a target folder
     var specificFolder = "";
     if (targetFolders != undefined) {
@@ -238,8 +266,8 @@ function handleSelectors(actualSelector, file, sourceFileContent, sourceVariable
     }
 
     if (!simulate) {
-        fs.writeFileSync(folder + '/public/' + specificFolder + '/' + fileToSave, newFileContent);
+        fs.writeFileSync(destination + '/' + specificFolder + '/' + fileToSave, newFileContent);
     } else {
-        console.log('Simulating writing file: ' + folder + '/public/' + fileToSave);
+        console.log('Simulating writing file: ' + destination + '/' + fileToSave);
     }
 }
